@@ -13,8 +13,8 @@ sessions: Dict[str, ClinicalTriageEnv] = {}
 # Map task names to the corresponding json filename prefixes
 TASK_MAP = {
     "easy_malaria": "easy",
-    "tb_cough": "medium",
-    "diabetic_sepsis": "hard"
+    "medium_tb": "medium",
+    "hard_sepsis": "hard"
 }
 
 class ResetRequest(BaseModel):
@@ -30,7 +30,7 @@ class StepRequest(BaseModel):
     action: Action
 
 @app.post("/reset", response_model=ResetResponse)
-def reset_env(request: ResetRequest):
+def reset_env(request: ResetRequest = ResetRequest()):
     # Retrieve mapped filename prefix, defaulting to the raw task string just in case, but fail if not found
     task_file = TASK_MAP.get(request.task)
     if not task_file:
