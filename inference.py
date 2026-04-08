@@ -13,7 +13,7 @@ MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
 SERVER_URL = "http://127.0.0.1:7860"
 
 # Use whichever key is provided
-HF_TOKEN = os.getenv("HF_TOKEN", "")
+HF_TOKEN = os.getenv("HF_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 API_BASE_URL = os.getenv("API_BASE_URL", "")
 
@@ -200,7 +200,7 @@ def run_task(task_name: str) -> None:
 
 def run_all() -> None:
     """Runs all tasks in sequence."""
-    tasks = ["easy_malaria", "tb_cough", "diabetic_sepsis"]
+    tasks = ["easy_malaria", "medium_tb", "hard_sepsis"]
     for t in tasks:
         try:
             run_task(t)
