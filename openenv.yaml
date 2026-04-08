@@ -1,0 +1,69 @@
+name: ClinicalTriageEnv
+version: "1.0.0"
+description: "A simulated clinical triage environment based on ICMR/WHO guidelines designed to train AI agents in diagnostic reasoning, testing efficiency, and patient safety for rural settings."
+author: "OpenEnv Project"
+reward_range: [0.0, 1.0]
+
+endpoints:
+  reset: "/reset"
+  step: "/step"
+  state: "/state"
+
+tasks:
+  - name: "easy_malaria"
+    description: "A young farmer from Jharkhand presenting with recurring fevers and exhaustion."
+    difficulty: "easy"
+    max_steps: 12
+  - name: "medium_tb"
+    description: "An urban construction worker presenting with a chronic 3-week cough and weight loss."
+    difficulty: "medium"
+    max_steps: 10
+  - name: "hard_sepsis"
+    description: "An elderly diabetic patient presenting with fever and confusion after a foot injury."
+    difficulty: "hard"
+    max_steps: 8
+
+action_space:
+  - action_type: "ask_patient"
+    fields:
+      - name: "question"
+        type: "string"
+        description: "The clinical question directed to the patient."
+  - action_type: "request_test"
+    fields:
+      - name: "test"
+        type: "string"
+        description: "The name of the laboratory or imaging test to order."
+  - action_type: "request_vital"
+    fields:
+      - name: "vital"
+        type: "string"
+        description: "The specific vital sign to check (e.g., blood pressure, temperature)."
+  - action_type: "make_assessment"
+    fields:
+      - name: "risk"
+        type: "string"
+        description: "Risk calculation corresponding to triage level (e.g., LOW, MODERATE, HIGH, CRITICAL)."
+      - name: "condition"
+        type: "string"
+        description: "The suspected underlying medical condition."
+      - name: "next_step"
+        type: "string"
+        description: "The immediate action plan or referral strategy."
+
+observation_space:
+  - field: "patient_profile"
+    type: "string"
+    description: "Demographic information and initial chief complaint."
+  - field: "conversation_history"
+    type: "list of strings"
+    description: "Log of questions asked by the agent and corresponding patient answers."
+  - field: "vitals_taken"
+    type: "dictionary"
+    description: "Key-value pairs of vital signs acquired so far."
+  - field: "lab_results"
+    type: "dictionary"
+    description: "Key-value pairs of laboratory test results acquired so far."
+  - field: "completed_steps"
+    type: "integer"
+    description: "The number of diagnostic steps taken so far."

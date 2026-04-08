@@ -1,0 +1,63 @@
+{
+  "task_id": "tb_cough",
+  "patient": "55F, semi-urban Rajasthan, mild smoker",
+  "complaint": "I've had a cough for 3 months, and sometimes I see blood when I cough.",
+  "ground_truth": {
+    "condition": "active_pulmonary_TB",
+    "risk": "CRITICAL",
+    "next_step": "refer_to_district_TB_centre"
+  },
+  "red_flags": [
+    "hemoptysis",
+    "night_sweats",
+    "weight_loss",
+    "contact",
+    "exposure",
+    "blood"
+  ],
+  "optimal_tests": [
+    "sputum_test",
+    "cbnaat",
+    "chest_xray",
+    "xray",
+    "x-ray"
+  ],
+  "danger_miss": "bronchitis",
+  "max_steps": 12,
+  "simulated_answers": {
+    "cough_duration": "The cough has been going on continuously for over 3 months, it doesn't stop.",
+    "blood": "Yes doctor, for the past few days, I've noticed blood in my sputum when I cough.",
+    "weight_loss": "I've lost a lot of weight, my clothes have become very loose.",
+    "night_sweats": "Yes, I wake up in the night and my shirt is completely soaked in sweat.",
+    "fever": "I have a mild fever that comes mostly in the evenings.",
+    "chest_pain": "Only when I cough really hard, otherwise no sharp pain.",
+    "shortness_of_breath": "Yes, I get tired and breathless very quickly now.",
+    "headache": "No, mostly just chest tiredness from coughing.",
+    "pain": "My chest hurts slightly from coughing, but nothing else.",
+    "sweat": "Yes, I wake up in the night and my shirt is completely soaked in sweat.",
+    "chills": "I do feel a bit cold in the evenings when the fever starts.",
+    "breath": "Yes, I get tired and breathless very quickly now.",
+    "tired": "Yes, I get tired and breathless very quickly now.",
+    "contact": "Now that you mention it, my cousin who visits often had TB last year.",
+    "exposure": "Now that you mention it, my cousin who visits often had TB last year.",
+    "tb": "No, I haven't been diagnosed with TB before.",
+    "tuberculosis": "No, I haven't been diagnosed with TB before.",
+    "travel": "No, I haven't traveled anywhere recently.",
+    "disease": "No, I don't have any other major diseases."
+  },
+  "vitals": {
+    "temperature": "100.2 F",
+    "bp": "120/80 mmHg",
+    "spo2": "94%",
+    "heart_rate": "95 bpm"
+  },
+  "tests": {
+    "sputum_test": "AFB positive (Acid-Fast Bacilli)",
+    "chest_xray": "Infiltration in upper right lobe",
+    "cbnaat": "MTB detected, Rifampicin resistance not detected",
+    "cbc": "Normal WBC, Hemoglobin 12.5 g/dL",
+    "Chest X-ray": "Infiltration in upper right lobe",
+    "Blood Chemistry": "Normal electrolytes, Urea 25 mg/dL",
+    "Electrolytes": "Sodium: 138, Potassium: 4.0 (Normal)"
+  }
+}

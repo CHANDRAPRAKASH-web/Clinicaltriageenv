@@ -1,0 +1,62 @@
+{
+  "task_id": "easy_malaria",
+  "patient": "28M farmer, Jharkhand",
+  "complaint": "I've been getting recurring fevers and feeling extremely exhausted for the past 3 days.",
+  "ground_truth": {
+    "condition": "plasmodium_vivax_malaria",
+    "risk": "HIGH",
+    "next_step": "refer_to_PHC"
+  },
+  "red_flags": [
+    "cyclic_fever",
+    "fatigue",
+    "mosquito",
+    "insect",
+    "water"
+  ],
+  "optimal_tests": [
+    "RDT",
+    "smear",
+    "cbc",
+    "complete_blood_count"
+  ],
+  "max_steps": 12,
+  "simulated_answers": {
+    "fever": "I've been having fevers for three days. It comes and goes.",
+    "fatigue": "I feel very weak, like I can't even walk to the market.",
+    "chills": "Yes, when the fever comes, I get severe chills and shivering.",
+    "cough": "No, I don't have any cough.",
+    "headache": "No, my head doesn't hurt, it's just the fever.",
+    "pain": "My whole body feels heavy but I don't have sharp pains anywhere.",
+    "nausea": "No vomiting or feeling sick to my stomach.",
+    "diarrhea": "No, my digestion is fine.",
+    "medication": "I took some paracetamol from a nearby local shop, but it didn't help.",
+    "mosquito": "I work in the fields, so there are a lot of mosquitoes in the evening.",
+    "insect": "I work in the fields, so there are a lot of mosquitoes and insects in the evening.",
+    "water": "There is a lot of stagnant standing water near the fields where I work.",
+    "bite": "I do get bitten by insects a lot while working in the fields.",
+    "travel": "No, I haven't traveled anywhere recently.",
+    "tick": "No, I haven't seen any ticks.",
+    "symptom": "Just the fever, exhaustion, and chills."
+  },
+  "vitals": {
+    "temperature": "101.5 F",
+    "bp": "110/70 mmHg",
+    "spo2": "98%",
+    "heart_rate": "105 bpm",
+    "complete_blood_count": "Mild anemia detected",
+    "cbc": "Mild anemia detected",
+    "Complete Blood Count (CBC)": "Mild anemia detected"
+  },
+  "tests": {
+    "RDT": "Positive for P. vivax",
+    "rdt": "Positive for P. vivax",
+    "Malaria rapid test": "Positive for P. vivax",
+    "blood_smear": "Gametocytes of P. vivax seen",
+    "complete_blood_count": "Mild anemia detected",
+    "cbc": "Mild anemia detected",
+    "Complete Blood Count (CBC)": "Mild anemia detected",
+    "Blood Chemistry": "Normal electrolytes, Urea 25 mg/dL",
+    "Electrolytes": "Sodium: 138, Potassium: 4.0 (Normal)"
+  }
+}

@@ -1,0 +1,24 @@
+# Environment variables
+.env
+
+# Windows Zone Identifier metadata files (created when copying from Windows)
+*Zone.Identifier
+
+# Old PRD Documents or Word Docs
+*.docx
+
+# Python cache files
+__pycache__/
+*.pyc
+
+# Virtual Environment
+venv/
+env/
+
+# Large ML / Audio / Data files (to avoid Git LFS issues)
+*.pt
+*.bin
+*.pth
+*.wav
+*.mp3
+*.mp4
