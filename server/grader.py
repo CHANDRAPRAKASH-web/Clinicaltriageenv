@@ -45,6 +45,18 @@ def partial_match(a: str, b: str) -> bool:
     return a in b or b in a
 
 
+def stem_match(a: str, b: str) -> bool:
+    """
+    Checks if two words share a common stem (at least 4 characters).
+    Handles basic clinical variances like 'cough' vs 'coughing'.
+    """
+    a, b = normalize(a), normalize(b)
+    if len(a) < 4 or len(b) < 4:
+        return a == b
+    # Check if they share the same first 4 characters
+    return a[:4] == b[:4]
+
+
 def keyword_match(keywords: List[str], text: str) -> bool:
     text = normalize(text)
     return any(k in text for k in keywords)
