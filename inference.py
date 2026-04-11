@@ -129,17 +129,19 @@ def run_task(task_name: str):
 
         rewards.append(reward)
 
-        print(f"[STEP] step={step} action={action['action']} reward={reward:.2f} done={str(done).lower()} error=null")
+        print(f"[STEP] step={step} action={action['action']} reward={max(0.05, min(0.95, reward)):.3f} done={str(done).lower()} error=null")
 
         if done:
             break
 
-    final_score = rewards[-1] if rewards else 0.0
+    final_score = rewards[-1] if rewards else 0.05
+    if final_score >= 0.95: final_score = 0.95
+    if final_score <= 0.05: final_score = 0.05
+
     success = final_score >= SUCCESS_THRESHOLD
+    rewards_str = ",".join(f"{max(0.05, min(0.95, r)):.3f}" for r in rewards)
 
-    rewards_str = ",".join(f"{r:.2f}" for r in rewards)
-
-    print(f"[END] success={str(success).lower()} steps={step} score={final_score:.2f} rewards={rewards_str}")
+    print(f"[END] success={str(success).lower()} steps={step} score={final_score:.3f} rewards={rewards_str}")
     print()
 
 

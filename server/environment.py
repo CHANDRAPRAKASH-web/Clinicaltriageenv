@@ -177,7 +177,7 @@ class ClinicalTriageEnv:
         if self.obs.done:
             return StepResult(
                 observation=self.obs,
-                reward=0.01,
+                reward=0.05,
                 done=True,
                 info={"error": "Episode already finished"}
             )
@@ -210,7 +210,7 @@ class ClinicalTriageEnv:
             if query in existing:
                 return StepResult(
                     observation=self.obs,
-                    reward=0.01,
+                    reward=0.05,
                     done=False,
                     info={"warning": f"Duplicate test/vital: {query}"}
                 )
@@ -250,7 +250,7 @@ class ClinicalTriageEnv:
                 }
             })
 
-            reward = grade.get("score", 0.01)
+            reward = grade.get("score", 0.05)
             self.obs.final_grading_result = grade
 
         else:
@@ -275,10 +275,10 @@ class ClinicalTriageEnv:
                         "tests_ordered": self.obs.tests_ordered
                     }
                 })
-                reward = interm.get("score", 0.01)
+                reward = interm.get("score", 0.05)
             except Exception as e:
                 info["grader_error"] = str(e)
-                reward = 0.01
+                reward = 0.05
 
         self.obs.last_reward = reward
         self.obs.total_reward += reward

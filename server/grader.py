@@ -5,11 +5,12 @@ from typing import Any, Dict, List
 # =========================
 
 def safe_score(score: float) -> float:
-    if score >= 1.0:
-        return 0.99
-    if score <= 0.01:
-        return 0.01
-    return round(score, 3)
+    # 🚨 HARD CLAMP to ensure we are never at 0 or 1
+    if score >= 0.95:
+        return 0.95
+    if score <= 0.05:
+        return 0.05
+    return round(float(score), 3)
 
 
 # =========================
