@@ -1,57 +1,104 @@
 {
-  "task_id": "diabetic_sepsis",
-  "patient": "62M, urban Delhi, known Type 2 Diabetic",
-  "complaint": "I have a wound on my foot that hasn't healed for 2 weeks, and today I feel very dizzy and cold.",
+  "task_id": "hard_sepsis",
+  "patient": "62M diabetic farmer, Rural Bihar",
+  "complaint": "Bahut kamzori hai, pair mein ghav hai jo theek nahi ho raha, thoda bhram bhi ho raha hai.",
+
   "ground_truth": {
-    "condition": "diabetic_foot_with_septicemia",
+    "condition": "diabetic_foot_sepsis",
     "risk": "CRITICAL",
     "next_step": "immediate_hospitalization"
   },
+
   "red_flags": [
-    "hypotension",
-    "altered_sensorium",
-    "uncontrolled_diabetes",
     "confusion",
-    "dizzy",
-    "drowsy",
-    "breathe",
+    "confused",
+    "disoriented",
     "wound",
-    "fever"
+    "non-healing wound",
+    "foul smell",
+    "discharge",
+    "fever",
+    "high blood sugar",
+    "hyperglycemia",
+    "incoherent",
+    "altered mental status"
   ],
+
+  "hidden_flag": "confusion",
+
   "optimal_tests": [
-    "blood_sugar",
-    "blood_culture",
+    "blood culture",
+    "random blood sugar",
+    "rbs",
     "cbc",
-    "random_blood_sugar",
-    "blood_glucose",
-    "lactate"
+    "complete blood count",
+    "wound swab"
   ],
-  "max_steps": 12,
+
+  "optimal_vitals": [
+    "temperature",
+    "bp",
+    "heart rate",
+    "spo2"
+  ],
+
+  "max_steps": 8,
+
   "simulated_answers": {
+    "confused": "Yes, sometimes I don't understand what's happening. Family says I'm talking incoherently.",
+    "confusion": "Yes, sometimes I don't understand what's happening. Family says I'm talking incoherently.",
+    "disoriented": "Yes, sometimes I don't understand what's happening. Family says I'm talking incoherently.",
+    "think clearly": "Yes, sometimes I don't understand what's happening. Family says I'm talking incoherently.",
+    "mental status": "Yes, sometimes I don't understand what's happening. Family says I'm talking incoherently.",
+    "incoherent": "Yes, sometimes I don't understand what's happening. Family says I'm talking incoherently.",
+
     "wound": "The wound started as a small cut, but now it's black and smells bad.",
-    "dizziness": "I feel like I will faint if I stand up, everything is spinning.",
-    "chills": "I'm shivering even though I have a high fever.",
-    "diabetes_history": "I've had diabetes for 15 years, but I haven't taken my insulin for 3 days because I ran out.",
-    "pain": "The foot wound is very painful and feels hot.",
-    "fever": "Yes, I have a very high fever since this morning.",
-    "sugar": "I don't know my exact sugar level, but I missed my insulin shots.",
-    "cough": "No cough, my lungs are okay.",
-    "nausea": "I feel a little sick, but haven't vomited."
+    "ghav": "The wound started as a small cut, but now it's black and smells bad.",
+    "smell": "Yes, there is a foul smell from the wound.",
+    "foul": "Yes, there is a foul smell from the wound.",
+    "discharge": "Yes, there is yellowish-green pus discharge from the wound.",
+    "getting worse": "Yes, it is spreading. The skin around it has turned dark.",
+    "black": "Yes, the wound has turned black at the center.",
+
+    "fever": "Yes, I've had fever for the past 2 days. It's high.",
+    "temperature": "Yes, I feel very hot.",
+    "chills": "Yes, I get chills sometimes.",
+
+    "diabetes": "Yes, I have diabetes for 10 years. I sometimes forget to take my medicine.",
+    "sugar": "I haven't checked recently, but I usually have high sugar.",
+    "glucose": "I haven't checked recently, but I usually have high sugar.",
+    "medication": "I take metformin but I forget sometimes.",
+    "insulin": "No, I don't take insulin. Only tablets.",
+
+    "weakness": "Yes, extreme weakness for 3 days. I can barely walk.",
+    "dizzy": "Yes, I feel dizzy when I stand up.",
+    "dizziness": "Yes, I feel dizzy when I stand up.",
+    "fatigue": "Yes, extreme tiredness.",
+
+    "how long": "The wound has been there for about 3 weeks.",
+    "duration": "About 3 weeks. I thought it would heal on its own.",
+
+    "travel": "No, I have not traveled anywhere.",
+    "cough": "No, I don't have cough.",
+    "chest": "No chest pain.",
+    "vomiting": "No vomiting.",
+
+    "symptom": "Main problems are wound on foot, weakness, confusion, and fever."
   },
+
   "vitals": {
-    "temperature": "103.1 F",
-    "bp": "85/50 mmHg",
-    "spo2": "91%",
-    "heart_rate": "125 bpm",
-    "blood_sugar": "450 mg/dL"
+    "temperature": "38.9°C (High — fever)",
+    "bp": "95/60 mmHg (Low — hypotension)",
+    "heart rate": "118 bpm (High — tachycardia)",
+    "spo2": "95% (Borderline)"
   },
+
   "tests": {
-    "cbc": "WBC 18,000 (High - Leukocytosis), Platelets normal",
-    "bmp": "Glucose 450 mg/dL (Critically High), Electrolytes normal",
-    "blood_glucose": "450 mg/dL (Hyperglycemia)",
-    "blood_culture": "Growth detected (Staphylococcus aureus) - CRITICAL: Confirms Septicemia",
-    "wound_culture": "Gram-positive cocci in clusters (Staphylococcus aureus)",
-    "Blood Chemistry": "Normal electrolytes, Creatinine 1.1 mg/dL",
-    "Electrolytes": "Sodium: 135, Potassium: 3.8 (Normal)"
+    "blood culture": "Gram-negative bacteremia — Klebsiella species detected",
+    "random blood sugar": "387 mg/dL (Critically high)",
+    "rbs": "387 mg/dL (Critically high)",
+    "cbc": "WBC: 18,500 (elevated — infection), Hb: 9.2 (anemia)",
+    "complete blood count": "WBC: 18,500 (elevated — infection), Hb: 9.2 (anemia)",
+    "wound swab": "Heavy growth of gram-negative organisms — septic wound"
   }
 }

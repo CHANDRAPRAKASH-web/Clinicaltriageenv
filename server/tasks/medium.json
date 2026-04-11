@@ -1,63 +1,99 @@
 {
-  "task_id": "tb_cough",
+  "task_id": "medium_tb",
   "patient": "55F, semi-urban Rajasthan, mild smoker",
-  "complaint": "I've had a cough for 3 months, and sometimes I see blood when I cough.",
+  "complaint": "I have had a cough for 3 months, and recently I noticed blood in my sputum. I also feel weak and have mild fever.",
+
   "ground_truth": {
     "condition": "active_pulmonary_TB",
     "risk": "CRITICAL",
     "next_step": "refer_to_district_TB_centre"
   },
+
   "red_flags": [
+    "blood in sputum",
     "hemoptysis",
-    "night_sweats",
-    "weight_loss",
-    "contact",
+    "chronic cough",
+    "cough more than 2 weeks",
+    "weight loss",
+    "night sweats",
+    "tb contact",
     "exposure",
-    "blood"
+    "low spo2",
+    "breathlessness",
+    "evening fever",
+    "loss of appetite"
   ],
+
+  "hidden_flag": "tb contact",
+
   "optimal_tests": [
-    "sputum_test",
+    "sputum test",
     "cbnaat",
-    "chest_xray",
-    "xray",
-    "x-ray"
+    "chest xray",
+    "xray"
   ],
-  "danger_miss": "bronchitis",
-  "max_steps": 12,
+
+  "optimal_vitals": [
+    "temperature",
+    "spo2"
+  ],
+
+  "max_steps": 10,
+
   "simulated_answers": {
-    "cough_duration": "The cough has been going on continuously for over 3 months, it doesn't stop.",
-    "blood": "Yes doctor, for the past few days, I've noticed blood in my sputum when I cough.",
-    "weight_loss": "I've lost a lot of weight, my clothes have become very loose.",
-    "night_sweats": "Yes, I wake up in the night and my shirt is completely soaked in sweat.",
-    "fever": "I have a mild fever that comes mostly in the evenings.",
-    "chest_pain": "Only when I cough really hard, otherwise no sharp pain.",
-    "shortness_of_breath": "Yes, I get tired and breathless very quickly now.",
-    "headache": "No, mostly just chest tiredness from coughing.",
-    "pain": "My chest hurts slightly from coughing, but nothing else.",
-    "sweat": "Yes, I wake up in the night and my shirt is completely soaked in sweat.",
-    "chills": "I do feel a bit cold in the evenings when the fever starts.",
-    "breath": "Yes, I get tired and breathless very quickly now.",
-    "tired": "Yes, I get tired and breathless very quickly now.",
-    "contact": "Now that you mention it, my cousin who visits often had TB last year.",
-    "exposure": "Now that you mention it, my cousin who visits often had TB last year.",
-    "tb": "No, I haven't been diagnosed with TB before.",
-    "tuberculosis": "No, I haven't been diagnosed with TB before.",
-    "travel": "No, I haven't traveled anywhere recently.",
-    "disease": "No, I don't have any other major diseases."
+    "cough": "I have had this cough for more than 3 months now. It does not stop.",
+    "how long": "The cough started about 3 months ago. First it was mild then it got worse.",
+    "duration": "More than 3 months. I ignored it thinking it was a cold.",
+    "cough duration": "It has been more than 3 months. It started slowly then became worse.",
+
+    "blood": "Yes, when I cough hard I see fresh blood in the sputum. It started about 10 days ago.",
+    "sputum": "Yes, my sputum has blood in it. It is sometimes pink and sometimes bright red.",
+    "hemoptysis": "Yes, I see blood while coughing. Sometimes it is just streaks, sometimes more.",
+    "blood in sputum": "Yes, definitely. It started recently and it frightens me.",
+
+    "weight loss": "Yes, I have lost a lot of weight. My family says I look very thin. Maybe 6-7 kg in 2 months.",
+    "weight": "I have lost significant weight. My clothes are very loose now.",
+    "appetite": "My appetite is completely gone. I eat very little.",
+    "eating": "I barely eat. Food does not taste good and I feel full very quickly.",
+
+    "night sweats": "Yes, I wake up completely drenched in sweat at night. I have to change clothes.",
+    "sweat": "Yes, very bad night sweats. Almost every night for the past 2 months.",
+
+    "fever": "I get mild fever mostly in the evenings. Not very high but persistent.",
+    "temperature": "I feel hot in the evenings. Never checked temperature but it feels like mild fever.",
+    "evening": "Yes, the fever comes in the evenings and I feel chilly.",
+
+    "breathing": "I feel breathless even when walking slowly or climbing stairs.",
+    "breathlessness": "Yes, I get out of breath easily. Even small activity tires me.",
+    "chest pain": "Mild chest discomfort sometimes when I cough hard.",
+
+    "contact": "Yes — my cousin had tuberculosis last year. I visited him regularly at home.",
+    "exposure": "Yes, I have been around someone with TB — my cousin. He was treated for TB.",
+    "tb": "My cousin had TB last year. I did not think I would get it.",
+    "family": "My cousin had TB. No one else in my immediate family.",
+
+    "smoking": "Yes I smoke — about 4-5 cigarettes a day for many years.",
+    "travel": "No recent travel.",
+    "diabetes": "No diabetes.",
+    "hiv": "I do not know. I have never been tested.",
+    "medication": "Nothing specific. Just some cough syrup from the pharmacy. Did not help.",
+
+    "symptom": "Main problems are — long cough with blood, weight loss, night sweats, and mild evening fever."
   },
+
   "vitals": {
-    "temperature": "100.2 F",
-    "bp": "120/80 mmHg",
-    "spo2": "94%",
-    "heart_rate": "95 bpm"
+    "temperature": "100.4 F",
+    "spo2": "93%",
+    "bp": "118/76 mmHg",
+    "heart_rate": "96 bpm",
+    "respiratory_rate": "22 breaths/min"
   },
+
   "tests": {
-    "sputum_test": "AFB positive (Acid-Fast Bacilli)",
-    "chest_xray": "Infiltration in upper right lobe",
-    "cbnaat": "MTB detected, Rifampicin resistance not detected",
-    "cbc": "Normal WBC, Hemoglobin 12.5 g/dL",
-    "Chest X-ray": "Infiltration in upper right lobe",
-    "Blood Chemistry": "Normal electrolytes, Urea 25 mg/dL",
-    "Electrolytes": "Sodium: 138, Potassium: 4.0 (Normal)"
+    "sputum test": "AFB Smear Positive (3+) — high bacillary load",
+    "cbnaat": "MTB detected — Rifampicin resistance NOT detected (drug-sensitive TB)",
+    "chest xray": "Bilateral upper lobe infiltration with cavitation — consistent with active pulmonary TB",
+    "xray": "Bilateral upper lobe infiltration with cavitation — consistent with active pulmonary TB",
+    "cbc": "Hb: 9.8 g/dL (anemia), WBC: Normal, ESR: Elevated"
   }
 }

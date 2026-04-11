@@ -1,62 +1,97 @@
 {
   "task_id": "easy_malaria",
   "patient": "28M farmer, Jharkhand",
-  "complaint": "I've been getting recurring fevers and feeling extremely exhausted for the past 3 days.",
+  "complaint": "I have had recurring fever with chills and extreme fatigue for the past 3 days. It comes and goes.",
+
   "ground_truth": {
     "condition": "plasmodium_vivax_malaria",
     "risk": "HIGH",
     "next_step": "refer_to_PHC"
   },
+
   "red_flags": [
-    "cyclic_fever",
+    "cyclic fever",
+    "intermittent fever",
+    "chills",
+    "shivering",
     "fatigue",
-    "mosquito",
-    "insect",
-    "water"
+    "mosquito exposure",
+    "insect bites",
+    "stagnant water",
+    "body ache",
+    "headache",
+    "sweating",
+    "rigor"
   ],
+
   "optimal_tests": [
-    "RDT",
-    "smear",
+    "rdt",
+    "malaria rapid test",
+    "blood smear",
     "cbc",
-    "complete_blood_count"
+    "complete blood count"
   ],
+
+  "optimal_vitals": [
+    "temperature",
+    "heart rate",
+    "bp",
+    "spo2"
+  ],
+
   "max_steps": 12,
+
   "simulated_answers": {
-    "fever": "I've been having fevers for three days. It comes and goes.",
-    "fatigue": "I feel very weak, like I can't even walk to the market.",
-    "chills": "Yes, when the fever comes, I get severe chills and shivering.",
-    "cough": "No, I don't have any cough.",
-    "headache": "No, my head doesn't hurt, it's just the fever.",
-    "pain": "My whole body feels heavy but I don't have sharp pains anywhere.",
-    "nausea": "No vomiting or feeling sick to my stomach.",
-    "diarrhea": "No, my digestion is fine.",
-    "medication": "I took some paracetamol from a nearby local shop, but it didn't help.",
-    "mosquito": "I work in the fields, so there are a lot of mosquitoes in the evening.",
-    "insect": "I work in the fields, so there are a lot of mosquitoes and insects in the evening.",
-    "water": "There is a lot of stagnant standing water near the fields where I work.",
-    "bite": "I do get bitten by insects a lot while working in the fields.",
-    "travel": "No, I haven't traveled anywhere recently.",
-    "tick": "No, I haven't seen any ticks.",
-    "symptom": "Just the fever, exhaustion, and chills."
+    "fever": "I've been having fever for 3 days. It comes and goes — usually worse in the evenings.",
+    "cyclic fever": "Yes, the fever is cyclical. I get burning hot, then after a few hours it breaks and I sweat a lot.",
+    "intermittent fever": "Yes, the fever is not constant. It comes in waves every few hours.",
+    "how long": "About 3 days now. It started suddenly.",
+    "duration": "3 days. It started after I came back from the field.",
+
+    "chills": "Yes, I get severe chills and uncontrollable shivering before the fever comes.",
+    "shivering": "Yes, I shiver badly. My whole body shakes before the fever rises.",
+    "rigor": "Yes, I get shaking chills — it lasts about 30 minutes then I go very hot.",
+
+    "fatigue": "I feel extremely weak and tired. I cannot even stand for long.",
+    "weakness": "My whole body is weak. I could not go to the field today.",
+    "body ache": "Yes, I have pain in all my muscles and joints. Even my eyes hurt.",
+    "headache": "Yes, there is a throbbing headache especially when the fever is high.",
+    "sweating": "After the fever breaks, I sweat a lot — my clothes get completely wet.",
+
+    "mosquito": "Yes, I work in the paddy fields. There are a lot of mosquitoes especially in the evening.",
+    "insect": "Yes, mosquitoes bite me every day in the fields. I don't use any protection.",
+    "water": "There is a lot of stagnant water near the fields after the rains. Mosquitoes breed there.",
+    "exposure": "Yes, I have been working near stagnant water for weeks.",
+
+    "travel": "No recent travel outside Jharkhand. I have been here only.",
+    "vomiting": "No vomiting, but I feel nauseous sometimes.",
+    "diarrhea": "No diarrhea.",
+    "cough": "No cough.",
+    "breathing": "No breathing problem.",
+
+    "medication": "I took paracetamol twice. It brought the fever down for a few hours but it came back.",
+    "treatment": "Only paracetamol from the local shop. Nothing else.",
+
+    "eating": "I have lost my appetite. I have barely eaten in 2 days.",
+    "urine": "My urine looks slightly dark. Not normal colour.",
+    "family": "No one else in my family is sick right now.",
+
+    "symptom": "Main symptoms are fever with chills, body ache, headache, and extreme weakness."
   },
+
   "vitals": {
-    "temperature": "101.5 F",
-    "bp": "110/70 mmHg",
-    "spo2": "98%",
-    "heart_rate": "105 bpm",
-    "complete_blood_count": "Mild anemia detected",
-    "cbc": "Mild anemia detected",
-    "Complete Blood Count (CBC)": "Mild anemia detected"
+    "temperature": "102.4 F",
+    "heart_rate": "108 bpm",
+    "bp": "108/68 mmHg",
+    "spo2": "97%",
+    "respiratory_rate": "18 breaths/min"
   },
+
   "tests": {
-    "RDT": "Positive for P. vivax",
-    "rdt": "Positive for P. vivax",
-    "Malaria rapid test": "Positive for P. vivax",
-    "blood_smear": "Gametocytes of P. vivax seen",
-    "complete_blood_count": "Mild anemia detected",
-    "cbc": "Mild anemia detected",
-    "Complete Blood Count (CBC)": "Mild anemia detected",
-    "Blood Chemistry": "Normal electrolytes, Urea 25 mg/dL",
-    "Electrolytes": "Sodium: 138, Potassium: 4.0 (Normal)"
+    "rdt": "Positive for Plasmodium vivax",
+    "malaria rapid test": "Positive for Plasmodium vivax",
+    "blood smear": "P. vivax gametocytes and trophozoites seen — moderate parasitemia",
+    "cbc": "Hb: 10.2 g/dL (mild anemia), Platelets: 98,000 (low), WBC: Normal",
+    "complete blood count": "Hb: 10.2 g/dL (mild anemia), Platelets: 98,000 (low), WBC: Normal"
   }
 }
