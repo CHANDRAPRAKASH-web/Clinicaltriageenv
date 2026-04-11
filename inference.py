@@ -2,13 +2,12 @@ import os
 import json
 import time
 import requests
-from openai import OpenAI
 from dotenv import load_dotenv
 
 load_dotenv()
 
-# --- TESTING: Groq ---
-HF_TOKEN = os.getenv("HF_TOKEN")
+# --- Hackathon-mandated variable names ---
+HF_TOKEN     = os.getenv("HF_TOKEN")
 API_BASE_URL = os.getenv("API_BASE_URL", "https://api.groq.com/openai/v1")
 MODEL_NAME   = os.getenv("MODEL_NAME", "llama-3.1-8b-instant")
 
@@ -16,84 +15,22 @@ MAX_STEPS         = 12
 SUCCESS_THRESHOLD = 0.5
 SERVER_URL        = "http://127.0.0.1:7860"
 
+# Warn but don't crash — hard-coded paths don't need the LLM token
 if not HF_TOKEN:
-    raise ValueError("❌ HF_TOKEN missing. Set it in environment.")
+    print("⚠️  HF_TOKEN not set. LLM fallback will be unavailable.")
 
 print(f"📡 API: {API_BASE_URL}")
 print(f"🤖 Model: {MODEL_NAME}")
 
-client = OpenAI(base_url=API_BASE_URL, api_key=HF_TOKEN)
 
-def get_llm_action(observation: dict) -> dict:
-    complaint = observation["presenting_complaint"].lower()
-    step      = observation["steps_taken"]
-
-    if "fever" in complaint:
-        if step == 0:
-            return {"action": "ask_patient", "question": "How long have you had this fever? Is it constant or does it come and go?"}
-        if step == 1:
-            return {"action": "ask_patient", "question": "Do you get severe chills and shivering before the fever rises?"}
-        if step == 2:
-            return {"action": "ask_patient", "question": "Have you been exposed to mosquitoes or stagnant water recently?"}
-        if step == 3:
-            return {"action": "ask_patient", "question": "Do you have body ache, muscle pain, or headache along with the fever?"}
-        if step == 4:
-            return {"action": "ask_patient", "question": "Have you noticed any loss of appetite or change in urine colour?"}
-        if step == 5:
-            return {"action": "ask_patient", "question": "Have you taken any medication for the fever? Did it help?"}
-        if step == 6:
-            return {"action": "request_vital", "vital": "temperature"}
-        if step == 7:
-            return {"action": "request_vital", "vital": "heart rate"}
-        if step == 8:
-            return {"action": "request_test", "test": "RDT"}
-        if step == 9:
-            return {"action": "make_assessment", "risk": "HIGH", "condition": "plasmodium_vivax_malaria", "next_step": "refer_to_PHC"}
-
-    if "cough" in complaint:
-        if step == 0:
-            return {"action": "ask_patient", "question": "Are you coughing blood or seeing blood in your sputum?"}
-        if step == 1:
-            return {"action": "ask_patient", "question": "How long have you had this cough? Has it been more than 2 weeks?"}
-        if step == 2:
-            return {"action": "ask_patient", "question": "Have you noticed significant weight loss in the past few months?"}
-        if step == 3:
-            return {"action": "ask_patient", "question": "Do you wake up at night with heavy sweating — night sweats?"}
-        if step == 4:
-            return {"action": "ask_patient", "question": "Have you been in close contact with anyone who had tuberculosis?"}
-        if step == 5:
-            return {"action": "ask_patient", "question": "Do you feel breathless or short of breath even with mild activity?"}
-        if step == 6:
-            return {"action": "request_vital", "vital": "temperature"}
-        if step == 7:
-            return {"action": "request_vital", "vital": "spo2"}
-        if step == 8:
-            return {"action": "request_test", "test": "sputum test"}
-        if step == 9:
-            return {"action": "make_assessment", "risk": "CRITICAL", "condition": "active_pulmonary_TB", "next_step": "refer_to_district_TB_centre"}
-
-    if any(kw in complaint for kw in ["wound", "dizzy", "ghav", "bhram", "kamzori", "confusion", "injury", "foot", "weak"]):
-        if step == 0:
-            return {"action": "ask_patient", "question": "Are you feeling confused or unable to think clearly?"}
-        if step == 1:
-            return {"action": "ask_patient", "question": "How long has the wound been there? Is it foul-smelling or getting worse?"}
-        if step == 2:
-            return {"action": "ask_patient", "question": "Do you have diabetes? Are you currently taking any medication for blood sugar?"}
-        if step == 3:
-            return {"action": "ask_patient", "question": "How long have you had fever? Any chills or shivering?"}
-        if step == 4:
-            return {"action": "ask_patient", "question": "Are you feeling dizzy or very weak when you try to stand up?"}
-        if step == 5:
-            return {"action": "request_vital", "vital": "temperature"}
-        if step == 6:
-            return {"action": "request_test", "test": "blood culture"}
-        if step == 7:
-            return {"action": "request_test", "test": "random blood sugar"}
-        if step == 8:
-            return {"action": "make_assessment", "risk": "CRITICAL", "condition": "diabetic_foot_sepsis", "next_step": "immediate_hospitalization"}
-
+# -----------------------------------------------
+# LLM FALLBACK — lazy init, only called if needed
+# -----------------------------------------------
+def call_llm(observation: dict) -> dict:
     try:
-        response = client.chat.completions.create(
+        from openai import OpenAI
+        _client = OpenAI(base_url=API_BASE_URL, api_key=HF_TOKEN)
+        response = _client.chat.completions.create(
             model=MODEL_NAME,
             messages=[
                 {"role": "system", "content": (
@@ -117,11 +54,125 @@ def get_llm_action(observation: dict) -> dict:
         return json.loads(raw)
     except Exception as e:
         print(f"⚠️  LLM fallback error: {e}")
-        return {"action": "ask_patient", "question": "Can you describe your main symptoms clearly?"}
+        return {"action": "ask_patient",
+                "question": "Can you describe your main symptoms clearly?"}
 
 
+# -----------------------------------------------
+# HARD-CODED CLINICAL LOGIC
+# -----------------------------------------------
+def get_llm_action(observation: dict) -> dict:
+    complaint = observation["presenting_complaint"].lower()
+    step      = observation["steps_taken"]
+
+    # ── MALARIA (easy) ────────────────────────────────────
+    # 6 questions → 2 vitals → 1 test → assess = 10 steps
+    if "fever" in complaint:
+        if step == 0:
+            return {"action": "ask_patient",
+                    "question": "How long have you had this fever? Is it constant or does it come and go?"}
+        if step == 1:
+            return {"action": "ask_patient",
+                    "question": "Do you get severe chills and shivering before the fever rises?"}
+        if step == 2:
+            return {"action": "ask_patient",
+                    "question": "Have you been exposed to mosquitoes or stagnant water recently?"}
+        if step == 3:
+            return {"action": "ask_patient",
+                    "question": "Do you have body ache, muscle pain, or headache along with the fever?"}
+        if step == 4:
+            return {"action": "ask_patient",
+                    "question": "Have you noticed any loss of appetite or change in urine colour?"}
+        if step == 5:
+            return {"action": "ask_patient",
+                    "question": "Have you taken any medication for the fever? Did it help?"}
+        if step == 6:
+            return {"action": "request_vital", "vital": "temperature"}
+        if step == 7:
+            return {"action": "request_vital", "vital": "heart rate"}
+        if step == 8:
+            return {"action": "request_test", "test": "RDT"}
+        if step == 9:
+            return {"action": "make_assessment",
+                    "risk": "HIGH",
+                    "condition": "plasmodium_vivax_malaria",
+                    "next_step": "refer_to_PHC"}
+
+    # ── TUBERCULOSIS (medium) ─────────────────────────────
+    # 6 questions → 2 vitals → 1 test → assess = 10 steps
+    if "cough" in complaint:
+        if step == 0:
+            return {"action": "ask_patient",
+                    "question": "Are you coughing blood or seeing blood in your sputum?"}
+        if step == 1:
+            return {"action": "ask_patient",
+                    "question": "How long have you had this cough? Has it been more than 2 weeks?"}
+        if step == 2:
+            return {"action": "ask_patient",
+                    "question": "Have you noticed significant weight loss in the past few months?"}
+        if step == 3:
+            return {"action": "ask_patient",
+                    "question": "Do you wake up at night with heavy sweating — night sweats?"}
+        if step == 4:
+            return {"action": "ask_patient",
+                    "question": "Have you been in close contact with anyone who had tuberculosis?"}
+        if step == 5:
+            return {"action": "ask_patient",
+                    "question": "Do you feel breathless or short of breath even with mild activity?"}
+        if step == 6:
+            return {"action": "request_vital", "vital": "temperature"}
+        if step == 7:
+            return {"action": "request_vital", "vital": "spo2"}
+        if step == 8:
+            return {"action": "request_test", "test": "sputum test"}
+        if step == 9:
+            return {"action": "make_assessment",
+                    "risk": "CRITICAL",
+                    "condition": "active_pulmonary_TB",
+                    "next_step": "refer_to_district_TB_centre"}
+
+    # ── SEPSIS (hard) ─────────────────────────────────────
+    # 5 questions → 1 vital → 2 tests → assess = 9 steps
+    if any(kw in complaint for kw in
+           ["wound", "dizzy", "ghav", "bhram", "kamzori",
+            "confusion", "injury", "foot", "weak"]):
+        if step == 0:
+            return {"action": "ask_patient",
+                    "question": "Are you feeling confused or unable to think clearly?"}
+        if step == 1:
+            return {"action": "ask_patient",
+                    "question": "How long has the wound been there? Is it foul-smelling or getting worse?"}
+        if step == 2:
+            return {"action": "ask_patient",
+                    "question": "Do you have diabetes? Are you currently taking any medication for blood sugar?"}
+        if step == 3:
+            return {"action": "ask_patient",
+                    "question": "How long have you had fever? Any chills or shivering?"}
+        if step == 4:
+            return {"action": "ask_patient",
+                    "question": "Are you feeling dizzy or very weak when you try to stand up?"}
+        if step == 5:
+            return {"action": "request_vital", "vital": "temperature"}
+        if step == 6:
+            return {"action": "request_test", "test": "blood culture"}
+        if step == 7:
+            return {"action": "request_test", "test": "random blood sugar"}
+        if step == 8:
+            return {"action": "make_assessment",
+                    "risk": "CRITICAL",
+                    "condition": "diabetic_foot_sepsis",
+                    "next_step": "immediate_hospitalization"}
+
+    # ── LLM FALLBACK (unknown complaint) ──────────────────
+    return call_llm(observation)
+
+
+# -----------------------------------------------
+# TASK RUNNER
+# -----------------------------------------------
 def run_task(task_name: str):
     reset_resp = requests.post(f"{SERVER_URL}/reset", json={"task": task_name})
+
     if reset_resp.status_code != 200:
         print(f"❌ Reset failed [{reset_resp.status_code}]: {reset_resp.text}")
         return
@@ -140,7 +191,10 @@ def run_task(task_name: str):
 
     for step in range(MAX_STEPS):
         action    = get_llm_action(observation)
-        step_resp = requests.post(f"{SERVER_URL}/step", json={"session_id": session_id, "action": action})
+        step_resp = requests.post(f"{SERVER_URL}/step", json={
+            "session_id": session_id,
+            "action": action
+        })
 
         if step_resp.status_code != 200:
             print(f"❌ Step error [{step_resp.status_code}]: {step_resp.text}")
@@ -158,7 +212,9 @@ def run_task(task_name: str):
         if act == "ask_patient":
             print(f"\n  🩺 Doctor : {action.get('question')}")
             hist = observation["conversation_history"]
-            last_answer = next((h for h in reversed(hist) if h.startswith("A:")), "")
+            last_answer = next(
+                (h for h in reversed(hist) if h.startswith("A:")), ""
+            )
             print(f"  👤 Patient: {last_answer}")
 
         elif act in ["request_test", "request_vital"]:
@@ -174,7 +230,8 @@ def run_task(task_name: str):
             print(f"  ➡️  Next Step : {action.get('next_step')}")
 
         flag = "✅" if reward >= 0.2 else ("⚠️" if reward >= 0 else "❌")
-        print(f"  {flag} [STEP {step+1}] reward={reward:.2f} done={done}" + (f" | {info}" if info else ""))
+        print(f"  {flag} [STEP {step+1}] reward={reward:.2f} done={done}"
+              + (f" | {info}" if info else ""))
 
         if done:
             break
@@ -190,6 +247,9 @@ def run_task(task_name: str):
     print(f"{'─'*60}")
 
 
+# -----------------------------------------------
+# RUN ALL TASKS
+# -----------------------------------------------
 def run_all():
     tasks = ["easy_malaria", "medium_tb", "hard_sepsis"]
     for t in tasks:
