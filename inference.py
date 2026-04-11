@@ -154,22 +154,13 @@ def run_task(client, task_name: str) -> None:
 def main() -> None:
     from openai import OpenAI
 
-    # Resolve base_url — must never be None or empty string
-    base_url = API_BASE_URL
-    if not base_url:
-        base_url = "https://api-inference.huggingface.co/v1"
+    global MODEL_NAME  # MUST be first, before any use of MODEL_NAME
 
-    api_key = API_KEY
-    if not api_key:
-        api_key = "dummy-key"  # OpenAI client requires non-empty string
+    base_url = API_BASE_URL if API_BASE_URL else "https://api-inference.huggingface.co/v1"
+    api_key  = API_KEY if API_KEY else "dummy-key"
+    model    = MODEL_NAME if MODEL_NAME else "Qwen/Qwen2.5-72B-Instruct"
 
-    model = MODEL_NAME
-    if not model:
-        model = "Qwen/Qwen2.5-72B-Instruct"
-
-    # Patch module-level MODEL_NAME so call_llm uses it
-    global MODEL_NAME
-    MODEL_NAME = model
+    MODEL_NAME = model  # now safe to assign
 
     print(f"🔗 Using base_url: {base_url}", flush=True)
 
