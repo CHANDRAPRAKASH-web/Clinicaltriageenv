@@ -1,29 +1,54 @@
+"""
+Inference Script — ClinicalTriageEnv
+=====================================
+MANDATORY ENV VARS (injected by the validator):
+    API_BASE_URL   The API endpoint for the LLM proxy.
+    MODEL_NAME     The model identifier to use for inference.
+    HF_TOKEN       Your Hugging Face / API key.
+
+STDOUT FORMAT:
+    [START] task=<task_name> env=<benchmark> model=<model_name>
+    [STEP]  step=<n> action=<action_str> reward=<0.00> done=<true|false> error=<msg|null>
+    [END]   success=<true|false> steps=<n> score=<score> rewards=<r1,r2,...,rn>
+"""
+
 import os
 import json
 import time
 import requests
+import textwrap
+
+from openai import OpenAI
 
 # -----------------------------------------------
-# ENV SETUP — use ONLY the validator-injected vars
-# DO NOT call load_dotenv() — it can conflict with
-# the API_BASE_URL and API_KEY that the validator
-# injects at runtime.
+# ENV SETUP — matches official sample script exactly
 # -----------------------------------------------
-API_BASE_URL = os.environ.get("API_BASE_URL", "")
-API_KEY      = os.environ.get("API_KEY", "")
-MODEL_NAME   = os.environ.get("MODEL_NAME", "gpt-3.5-turbo")
+# The validator injects HF_TOKEN; the error page references API_KEY.
+# Handle BOTH, exactly like the official sample does.
+API_KEY = os.getenv("HF_TOKEN") or os.getenv("API_KEY")
+API_BASE_URL = os.getenv("API_BASE_URL") or "https://router.huggingface.co/v1"
+MODEL_NAME = os.getenv("MODEL_NAME") or "Qwen/Qwen2.5-72B-Instruct"
 
 MAX_STEPS = 12
 SUCCESS_THRESHOLD = 0.5
 SERVER_URL = "http://127.0.0.1:7860"
+BENCHMARK = "clinical_triage"
 
-SYSTEM_PROMPT = """You are a clinical triage AI agent deployed in a rural Indian health sub-centre.
-You are triaging real patients based on WHO/ICMR guidelines.
+# -----------------------------------------------
+# OPENAI CLIENT — single instance, created at
+# module level so the proxy sees it immediately
+# -----------------------------------------------
+client = OpenAI(
+    base_url=API_BASE_URL,
+    api_key=API_KEY,
+)
 
-At each step you will receive:
-- The patient's profile and presenting complaint
-- The conversation history so far (questions asked, answers received, tests ordered)
-- The current step number and max steps
+SYSTEM_PROMPT = textwrap.dedent("""\
+You are a clinical triage AI agent deployed in a rural Indian health sub-centre.
+You are triaging patients based on WHO/ICMR guidelines.
+
+At each step you will receive the patient's profile, presenting complaint,
+conversation history, and tests ordered so far.
 
 You must return a JSON object with ONE of these actions:
 
@@ -40,12 +65,12 @@ You must return a JSON object with ONE of these actions:
    {"action": "make_assessment", "risk": "<LOW|MODERATE|HIGH|CRITICAL>", "condition": "<suspected_condition>", "next_step": "<referral_or_action_plan>"}
 
 CLINICAL RULES:
-- Always ask about red flag symptoms early (fever pattern, blood in sputum, confusion, etc.)
-- Order targeted tests based on clinical suspicion (RDT for malaria, sputum test for TB, blood culture for sepsis)
+- Ask about red flag symptoms early (fever pattern, blood in sputum, confusion)
+- Order targeted tests (RDT for malaria, sputum test for TB, blood culture for sepsis)
 - Use WHO danger signs to classify risk level
 - For HIGH/CRITICAL risk: always refer (PHC, district hospital, or immediate hospitalization)
-- Be efficient — do not waste steps on irrelevant questions
-- Return ONLY valid JSON, no extra text."""
+- Be efficient with your steps
+- Return ONLY valid JSON, no extra text.""")
 
 
 # -----------------------------------------------
@@ -53,20 +78,12 @@ CLINICAL RULES:
 # -----------------------------------------------
 def call_llm(messages: list) -> str:
     """Call the LLM via the validator-provided proxy and return the response content."""
-    from openai import OpenAI
-
-    client = OpenAI(
-        base_url=API_BASE_URL,
-        api_key=API_KEY
-    )
-
     response = client.chat.completions.create(
         model=MODEL_NAME,
         messages=messages,
         max_tokens=300,
-        temperature=0.2
+        temperature=0.2,
     )
-
     return response.choices[0].message.content.strip()
 
 
@@ -77,14 +94,13 @@ def parse_llm_response(response_text: str) -> dict:
     # Strip markdown code fences if present
     if text.startswith("```"):
         lines = text.split("\n")
-        # Remove first line (```json or ```) and last line (```)
         lines = [l for l in lines if not l.strip().startswith("```")]
         text = "\n".join(lines).strip()
 
     try:
         return json.loads(text)
     except json.JSONDecodeError:
-        # Try to find JSON object in the text
+        # Try to extract JSON object from mixed text
         start = text.find("{")
         end = text.rfind("}") + 1
         if start != -1 and end > start:
@@ -93,7 +109,7 @@ def parse_llm_response(response_text: str) -> dict:
             except json.JSONDecodeError:
                 pass
 
-    # Fallback if LLM returns garbage
+    # Fallback if LLM returns unparseable text
     return {"action": "ask_patient", "question": "Can you describe your main symptoms?"}
 
 
@@ -128,7 +144,7 @@ def get_llm_action(observation: dict) -> dict:
 
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "user", "content": user_prompt}
+        {"role": "user", "content": user_prompt},
     ]
 
     # If we're near the end of allowed steps, nudge toward final assessment
@@ -137,106 +153,72 @@ def get_llm_action(observation: dict) -> dict:
     if steps_taken >= max_steps - 2:
         messages.append({
             "role": "user",
-            "content": "You are running low on steps. Make your final assessment NOW with make_assessment."
+            "content": "You are running low on steps. Make your final assessment NOW using make_assessment.",
         })
 
-    try:
-        response_text = call_llm(messages)
-        print(f"[LLM] Raw response: {response_text[:200]}")
-        action = parse_llm_response(response_text)
+    response_text = call_llm(messages)
+    action = parse_llm_response(response_text)
 
-        # Validate action has required fields
-        if "action" not in action:
-            action = {"action": "ask_patient", "question": "Please describe your symptoms in detail."}
+    # Validate action has required fields
+    if "action" not in action:
+        action = {"action": "ask_patient", "question": "Please describe your symptoms in detail."}
 
-        return action
-
-    except Exception as e:
-        print(f"[ERROR] LLM call failed: {e}")
-        # Rule-based fallback so the task can still complete
-        return _fallback_action(observation)
-
-
-def _fallback_action(observation: dict) -> dict:
-    """Rule-based fallback if LLM is unavailable."""
-    complaint = observation.get("presenting_complaint", "").lower()
-    step = observation.get("steps_taken", 0)
-
-    if "fever" in complaint:
-        sequence = [
-            {"action": "ask_patient", "question": "How long have you had fever and is it cyclic?"},
-            {"action": "ask_patient", "question": "Do you experience chills or shivering?"},
-            {"action": "ask_patient", "question": "Have you been exposed to mosquitoes or stagnant water?"},
-            {"action": "request_test", "test": "RDT"},
-            {"action": "make_assessment", "risk": "HIGH", "condition": "plasmodium_vivax_malaria", "next_step": "refer_to_PHC"},
-        ]
-    elif "cough" in complaint:
-        sequence = [
-            {"action": "ask_patient", "question": "Is there any blood in your sputum?"},
-            {"action": "ask_patient", "question": "Have you had weight loss or night sweats?"},
-            {"action": "request_test", "test": "sputum test"},
-            {"action": "make_assessment", "risk": "CRITICAL", "condition": "active_pulmonary_TB", "next_step": "refer_to_district_TB_centre"},
-        ]
-    elif any(k in complaint for k in ["wound", "dizzy", "confusion", "injury"]):
-        sequence = [
-            {"action": "ask_patient", "question": "Are you experiencing confusion or altered mental status?"},
-            {"action": "ask_patient", "question": "Is the wound getting worse or showing signs of infection?"},
-            {"action": "request_test", "test": "blood culture"},
-            {"action": "make_assessment", "risk": "CRITICAL", "condition": "diabetic_foot_sepsis", "next_step": "immediate_hospitalization"},
-        ]
-    else:
-        sequence = [
-            {"action": "ask_patient", "question": "Can you describe your main symptoms?"},
-            {"action": "make_assessment", "risk": "MODERATE", "condition": "unspecified", "next_step": "refer_to_PHC"},
-        ]
-
-    idx = min(step, len(sequence) - 1)
-    return sequence[idx]
+    return action
 
 
 # -----------------------------------------------
 # TASK RUNNER
 # -----------------------------------------------
 def run_task(task_name: str):
+    step = 0
+    try:
+        reset_resp = requests.post(f"{SERVER_URL}/reset", json={"task": task_name})
+        data = reset_resp.json()
 
-    reset_resp = requests.post(f"{SERVER_URL}/reset", json={"task": task_name})
-    data = reset_resp.json()
+        session_id = data["session_id"]
+        observation = data["observation"]
 
-    session_id = data["session_id"]
-    observation = data["observation"]
+        print(f"[START] task={task_name} env={BENCHMARK} model={MODEL_NAME}")
 
-    print(f"[START] task={task_name} env=clinical model={MODEL_NAME}")
+        rewards = []
 
-    rewards = []
+        for step in range(1, MAX_STEPS + 1):
+            error_msg = "null"
 
-    for step in range(1, MAX_STEPS + 1):
+            try:
+                action = get_llm_action(observation)
+            except Exception as e:
+                error_msg = str(e)
+                print(f"[STEP] step={step} action=error reward=0.00 done=false error={error_msg}")
+                rewards.append(0.0)
+                continue
 
-        action = get_llm_action(observation)
+            step_resp = requests.post(f"{SERVER_URL}/step", json={
+                "session_id": session_id,
+                "action": action,
+            })
 
-        step_resp = requests.post(f"{SERVER_URL}/step", json={
-            "session_id": session_id,
-            "action": action
-        })
+            step_data = step_resp.json()
+            observation = step_data["observation"]
+            reward = step_data["reward"]
+            done = step_data["done"]
 
-        step_data = step_resp.json()
-        observation = step_data["observation"]
-        reward = step_data["reward"]
-        done = step_data["done"]
+            rewards.append(reward)
 
-        rewards.append(reward)
+            print(f"[STEP] step={step} action={action['action']} reward={reward:.2f} done={str(done).lower()} error={error_msg}")
 
-        print(f"[STEP] step={step} action={action['action']} reward={reward:.2f} done={str(done).lower()} error=null")
+            if done:
+                break
 
-        if done:
-            break
+        final_score = rewards[-1] if rewards else 0.0
+        success = final_score >= SUCCESS_THRESHOLD
+        rewards_str = ",".join(f"{r:.2f}" for r in rewards)
 
-    final_score = rewards[-1] if rewards else 0.0
-    success = final_score >= SUCCESS_THRESHOLD
+        print(f"[END] success={str(success).lower()} steps={step} score={final_score:.2f} rewards={rewards_str}")
 
-    rewards_str = ",".join(f"{r:.2f}" for r in rewards)
-
-    print(f"[END] success={str(success).lower()} steps={step} score={final_score:.2f} rewards={rewards_str}")
-    print()
+    except Exception as exc:
+        print(f"[END] success=false steps={step} score=0.00 rewards=0.00")
+        print(f"[FATAL] {exc}")
 
 
 def run_all():
