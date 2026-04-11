@@ -7,9 +7,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# --- Hackathon-mandated variable names ---
-API_BASE_URL = os.getenv("API_BASE_URL") or "https://router.huggingface.co/v1"
-MODEL_NAME   = os.getenv("MODEL_NAME") or "Qwen/Qwen2.5-72B-Instruct"
+# --- Hackathon-mandated variable names — NO fallback defaults ---
+API_BASE_URL = os.getenv("API_BASE_URL")
+MODEL_NAME   = os.getenv("MODEL_NAME")
 API_KEY      = os.getenv("API_KEY") or os.getenv("HF_TOKEN")
 
 MAX_STEPS         = 12
@@ -17,15 +17,12 @@ SUCCESS_THRESHOLD = 0.5
 SERVER_URL        = "http://127.0.0.1:7860"
 BENCHMARK         = "clinical_triage"
 
-if not API_KEY:
-    print("⚠️ API_KEY not set")
-
-print(f"📡 API: {API_BASE_URL}")
-print(f"🤖 Model: {MODEL_NAME}")
+print(f"📡 API: {API_BASE_URL}", flush=True)
+print(f"🤖 Model: {MODEL_NAME}", flush=True)
 
 
 # -----------------------------------------------
-# STDOUT LOG HELPERS (mandatory format)
+# STDOUT LOG HELPERS (mandatory exact format)
 # -----------------------------------------------
 def log_start(task: str, env: str, model: str) -> None:
     print(f"[START] task={task} env={env} model={model}", flush=True)
@@ -49,9 +46,9 @@ def log_end(success: bool, steps: int, score: float, rewards: List[float]) -> No
 
 
 # -----------------------------------------------
-# LLM CALL — client created inside function
+# LLM CALL — client passed in, never created at module level
 # -----------------------------------------------
-def call_llm(observation: dict) -> dict:
+def call_llm(client, observation: dict) -> dict:
     system_prompt = """You are a rural health assistant AI helping a community health worker diagnose patients.
 
 At each step, based on the observation, decide the next clinical action.
@@ -60,46 +57,31 @@ Return ONLY a valid JSON object — no explanation, no markdown, no extra text.
 
 Use exactly one of these formats:
 
-1. Ask the patient a question:
-   {"action": "ask_patient", "question": "..."}
-
-2. Request a vital sign:
-   {"action": "request_vital", "vital": "temperature"}
+1. {"action": "ask_patient", "question": "..."}
+2. {"action": "request_vital", "vital": "temperature"}
    {"action": "request_vital", "vital": "heart rate"}
    {"action": "request_vital", "vital": "spo2"}
-
-3. Request a diagnostic test:
-   {"action": "request_test", "test": "RDT"}
+3. {"action": "request_test", "test": "RDT"}
    {"action": "request_test", "test": "sputum test"}
    {"action": "request_test", "test": "blood culture"}
    {"action": "request_test", "test": "random blood sugar"}
-
-4. Make a final assessment (only after gathering enough info):
-   {"action": "make_assessment", "risk": "HIGH", "condition": "plasmodium_vivax_malaria", "next_step": "refer_to_PHC"}
+4. {"action": "make_assessment", "risk": "HIGH", "condition": "plasmodium_vivax_malaria", "next_step": "refer_to_PHC"}
    {"action": "make_assessment", "risk": "CRITICAL", "condition": "active_pulmonary_TB", "next_step": "refer_to_district_TB_centre"}
    {"action": "make_assessment", "risk": "CRITICAL", "condition": "diabetic_foot_sepsis", "next_step": "immediate_hospitalization"}
 
 Clinical guidance:
-- FEVER → ask about duration, chills, mosquito exposure, body ache, appetite/urine change, medications → check temperature + heart rate → RDT test → assess for malaria
-- COUGH → ask about blood in sputum, duration (>2 weeks), weight loss, night sweats, TB contact, breathlessness → check temperature + spo2 → sputum test → assess for TB
-- WOUND / DIZZY / CONFUSION → ask about confusion, wound duration/smell, diabetes, fever, dizziness → check temperature → blood culture + random blood sugar → assess for sepsis
+- FEVER → ask about duration, chills, mosquito exposure, body ache, appetite/urine → check temperature + heart rate → RDT → assess malaria
+- COUGH → ask about blood in sputum, duration >2 weeks, weight loss, night sweats, TB contact, breathlessness → check temperature + spo2 → sputum test → assess TB
+- WOUND/DIZZY/CONFUSION → ask about confusion, wound smell/duration, diabetes, fever, dizziness → check temperature → blood culture + random blood sugar → assess sepsis
 
-Follow the progression: ask questions first, then request vitals, then request tests, then make assessment.
-Steps taken so far is shown in the observation — use it to decide what stage you are at."""
+Follow the progression: questions first → vitals → tests → final assessment."""
 
     try:
-        from openai import OpenAI
-
-        _client = OpenAI(
-            base_url=API_BASE_URL,
-            api_key=API_KEY
-        )
-
-        response = _client.chat.completions.create(
+        response = client.chat.completions.create(
             model=MODEL_NAME,
             messages=[
                 {"role": "system", "content": system_prompt},
-                {"role": "user", "content": json.dumps(observation)}
+                {"role": "user",   "content": json.dumps(observation)}
             ],
             temperature=0.1,
             max_tokens=200
@@ -118,7 +100,7 @@ Steps taken so far is shown in the observation — use it to decide what stage y
 # -----------------------------------------------
 # TASK RUNNER
 # -----------------------------------------------
-def run_task(task_name: str) -> None:
+def run_task(client, task_name: str) -> None:
     rewards: List[float] = []
     steps_taken = 0
     score = 0.0
@@ -136,9 +118,10 @@ def run_task(task_name: str) -> None:
 
         for step in range(1, MAX_STEPS + 1):
             steps_taken = step
-            action = call_llm(observation)
-
             error = None
+
+            action = call_llm(client, observation)
+
             try:
                 step_resp = requests.post(f"{SERVER_URL}/step", json={
                     "session_id": session_id,
@@ -148,16 +131,15 @@ def run_task(task_name: str) -> None:
                 step_data = step_resp.json()
             except Exception as e:
                 error = str(e)
-                print(f"[DEBUG] Step failed: {e}", flush=True)
+                print(f"[DEBUG] Step request failed: {e}", flush=True)
                 log_step(step=step, action=action["action"], reward=0.0, done=True, error=error)
                 break
 
             observation = step_data["observation"]
             reward      = float(step_data["reward"])
-            done        = step_data["done"]
+            done        = bool(step_data["done"])
 
             rewards.append(reward)
-
             log_step(step=step, action=action["action"], reward=reward, done=done, error=error)
 
             if done:
@@ -174,11 +156,22 @@ def run_task(task_name: str) -> None:
         log_end(success=success, steps=steps_taken, score=score, rewards=rewards)
 
 
-def run_all() -> None:
-    for t in ["easy_malaria", "medium_tb", "hard_sepsis"]:
-        run_task(t)
+# -----------------------------------------------
+# MAIN — client created ONCE here using injected vars
+# -----------------------------------------------
+def main() -> None:
+    from openai import OpenAI
+
+    # Single client init — uses their injected API_BASE_URL and API_KEY
+    client = OpenAI(
+        base_url=API_BASE_URL,
+        api_key=API_KEY
+    )
+
+    for task_name in ["easy_malaria", "medium_tb", "hard_sepsis"]:
+        run_task(client, task_name)
         time.sleep(1)
 
 
 if __name__ == "__main__":
-    run_all()
+    main()
