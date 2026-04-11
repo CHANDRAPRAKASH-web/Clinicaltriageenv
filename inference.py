@@ -3,6 +3,7 @@ import json
 import time
 import requests
 from dotenv import load_dotenv
+from openai import OpenAI
 
 load_dotenv()
 
@@ -21,19 +22,57 @@ if not API_KEY:
 print(f"📡 API: {API_BASE_URL}")
 print(f"🤖 Model: {MODEL_NAME}")
 
+# --- Module-level OpenAI client using injected env vars ---
+client = OpenAI(
+    base_url=API_BASE_URL,
+    api_key=API_KEY
+)
+
 
 # -----------------------------------------------
-# LLM FALLBACK — lazy init
+# LLM CALL — every action goes through here
 # -----------------------------------------------
 def call_llm(observation: dict) -> dict:
-    try:
-        from openai import OpenAI
-        _client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
+    system_prompt = """You are a rural health assistant AI helping a community health worker diagnose patients.
 
-        response = _client.chat.completions.create(
+At each step, based on the observation, decide the next clinical action.
+
+Return ONLY a valid JSON object — no explanation, no markdown, no extra text.
+
+Use exactly one of these formats:
+
+1. Ask the patient a question:
+   {"action": "ask_patient", "question": "..."}
+
+2. Request a vital sign:
+   {"action": "request_vital", "vital": "temperature"}
+   {"action": "request_vital", "vital": "heart rate"}
+   {"action": "request_vital", "vital": "spo2"}
+
+3. Request a diagnostic test:
+   {"action": "request_test", "test": "RDT"}
+   {"action": "request_test", "test": "sputum test"}
+   {"action": "request_test", "test": "blood culture"}
+   {"action": "request_test", "test": "random blood sugar"}
+
+4. Make a final assessment (only after gathering enough info):
+   {"action": "make_assessment", "risk": "HIGH", "condition": "plasmodium_vivax_malaria", "next_step": "refer_to_PHC"}
+   {"action": "make_assessment", "risk": "CRITICAL", "condition": "active_pulmonary_TB", "next_step": "refer_to_district_TB_centre"}
+   {"action": "make_assessment", "risk": "CRITICAL", "condition": "diabetic_foot_sepsis", "next_step": "immediate_hospitalization"}
+
+Clinical guidance:
+- FEVER → ask about duration, chills, mosquito exposure, body ache, appetite/urine change, medications → check temperature + heart rate → RDT test → assess for malaria
+- COUGH → ask about blood in sputum, duration (>2 weeks), weight loss, night sweats, TB contact, breathlessness → check temperature + spo2 → sputum test → assess for TB
+- WOUND / DIZZY / CONFUSION → ask about confusion, wound duration/smell, diabetes, fever, dizziness → check temperature → blood culture + random blood sugar → assess for sepsis
+
+Follow the progression: ask questions first, then request vitals, then request tests, then make assessment.
+Steps taken so far is shown in the observation — use it to decide what stage you are at."""
+
+    try:
+        response = client.chat.completions.create(
             model=MODEL_NAME,
             messages=[
-                {"role": "system", "content": "Return ONLY JSON."},
+                {"role": "system", "content": system_prompt},
                 {"role": "user", "content": json.dumps(observation)}
             ],
             temperature=0.1,
@@ -42,112 +81,12 @@ def call_llm(observation: dict) -> dict:
 
         raw = response.choices[0].message.content.strip()
         raw = raw.replace("```json", "").replace("```", "").strip()
-
         return json.loads(raw)
 
-    except Exception:
+    except Exception as e:
+        print(f"[DEBUG] LLM call failed: {e}")
         return {"action": "ask_patient",
                 "question": "Can you describe your main symptoms clearly?"}
-
-
-# -----------------------------------------------
-# HARD-CODED LOGIC (UNCHANGED)
-# -----------------------------------------------
-def get_llm_action(observation: dict) -> dict:
-    complaint = observation["presenting_complaint"].lower()
-    step      = observation["steps_taken"]
-
-    if "fever" in complaint:
-        if step == 0:
-            return {"action": "ask_patient",
-                    "question": "How long have you had this fever? Is it constant or does it come and go?"}
-        if step == 1:
-            return {"action": "ask_patient",
-                    "question": "Do you get severe chills and shivering before the fever rises?"}
-        if step == 2:
-            return {"action": "ask_patient",
-                    "question": "Have you been exposed to mosquitoes or stagnant water recently?"}
-        if step == 3:
-            return {"action": "ask_patient",
-                    "question": "Do you have body ache, muscle pain, or headache along with the fever?"}
-        if step == 4:
-            return {"action": "ask_patient",
-                    "question": "Have you noticed any loss of appetite or change in urine colour?"}
-        if step == 5:
-            return {"action": "ask_patient",
-                    "question": "Have you taken any medication for the fever? Did it help?"}
-        if step == 6:
-            return {"action": "request_vital", "vital": "temperature"}
-        if step == 7:
-            return {"action": "request_vital", "vital": "heart rate"}
-        if step == 8:
-            return {"action": "request_test", "test": "RDT"}
-        if step == 9:
-            return {"action": "make_assessment",
-                    "risk": "HIGH",
-                    "condition": "plasmodium_vivax_malaria",
-                    "next_step": "refer_to_PHC"}
-
-    if "cough" in complaint:
-        if step == 0:
-            return {"action": "ask_patient",
-                    "question": "Are you coughing blood or seeing blood in your sputum?"}
-        if step == 1:
-            return {"action": "ask_patient",
-                    "question": "How long have you had this cough? Has it been more than 2 weeks?"}
-        if step == 2:
-            return {"action": "ask_patient",
-                    "question": "Have you noticed significant weight loss in the past few months?"}
-        if step == 3:
-            return {"action": "ask_patient",
-                    "question": "Do you wake up at night with heavy sweating — night sweats?"}
-        if step == 4:
-            return {"action": "ask_patient",
-                    "question": "Have you been in close contact with anyone who had tuberculosis?"}
-        if step == 5:
-            return {"action": "ask_patient",
-                    "question": "Do you feel breathless or short of breath even with mild activity?"}
-        if step == 6:
-            return {"action": "request_vital", "vital": "temperature"}
-        if step == 7:
-            return {"action": "request_vital", "vital": "spo2"}
-        if step == 8:
-            return {"action": "request_test", "test": "sputum test"}
-        if step == 9:
-            return {"action": "make_assessment",
-                    "risk": "CRITICAL",
-                    "condition": "active_pulmonary_TB",
-                    "next_step": "refer_to_district_TB_centre"}
-
-    if any(kw in complaint for kw in ["wound","dizzy","confusion"]):
-        if step == 0:
-            return {"action": "ask_patient",
-                    "question": "Are you feeling confused or unable to think clearly?"}
-        if step == 1:
-            return {"action": "ask_patient",
-                    "question": "How long has the wound been there? Is it foul-smelling or getting worse?"}
-        if step == 2:
-            return {"action": "ask_patient",
-                    "question": "Do you have diabetes?"}
-        if step == 3:
-            return {"action": "ask_patient",
-                    "question": "Do you have fever or chills?"}
-        if step == 4:
-            return {"action": "ask_patient",
-                    "question": "Are you feeling dizzy or weak?"}
-        if step == 5:
-            return {"action": "request_vital", "vital": "temperature"}
-        if step == 6:
-            return {"action": "request_test", "test": "blood culture"}
-        if step == 7:
-            return {"action": "request_test", "test": "random blood sugar"}
-        if step == 8:
-            return {"action": "make_assessment",
-                    "risk": "CRITICAL",
-                    "condition": "diabetic_foot_sepsis",
-                    "next_step": "immediate_hospitalization"}
-
-    return call_llm(observation)
 
 
 # -----------------------------------------------
@@ -161,16 +100,13 @@ def run_task(task_name: str):
     session_id  = data["session_id"]
     observation = data["observation"]
 
-    # 🔥 REQUIRED FIX: FORCE ONE API CALL
-    _ = call_llm(observation)
-
     print(f"[START] Task: {task_name}")
 
     rewards = []
 
     for step in range(MAX_STEPS):
 
-        action = get_llm_action(observation)
+        action = call_llm(observation)
 
         step_resp = requests.post(f"{SERVER_URL}/step", json={
             "session_id": session_id,
