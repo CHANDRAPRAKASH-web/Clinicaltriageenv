@@ -7,9 +7,9 @@ from typing import Any, Dict, List
 def safe_score(score: float) -> float:
     if score >= 1.0:
         return 0.99
-    if score <= 0.0:
+    if score <= 0.01:
         return 0.01
-    return score
+    return round(score, 3)
 
 
 # =========================
