@@ -19,13 +19,12 @@ EMERGENCY_CONDITIONS: List[str] = [
     "cardiac","diabetic_foot","hemorrhage","diabetic_sepsis"
 ]
 
-# Common medical word stems for fuzzy matching
 STEM_PAIRS: List[tuple] = [
-    ("confus", "confus"),        # confused / confusion / confusing
+    ("confus", "confus"),
     ("fever", "febr"),
     ("cough", "cough"),
     ("bleed", "blood"),
-    ("hemopt", "blood"),         # hemoptysis → blood
+    ("hemopt", "blood"),
     ("sputum", "sputum"),
     ("wound", "wound"),
     ("infect", "infect"),
@@ -52,7 +51,6 @@ def normalize(text: str) -> str:
 
 
 def stem_match(a: str, b: str) -> bool:
-    """Check if two strings share a common medical stem."""
     for s1, s2 in STEM_PAIRS:
         if (s1 in a and s2 in b) or (s2 in a and s1 in b):
             return True
@@ -69,22 +67,18 @@ def partial_match(a: str, b: str) -> bool:
     if not a or not b:
         return False
 
-    # Direct substring match
     if a in b or b in a:
         return True
 
-    # Stem-based matching
     if stem_match(a, b):
         return True
 
-    # Word-level match (words longer than 4 chars)
     a_words = [w for w in a.split() if len(w) > 4]
     b_words = [w for w in b.split() if len(w) > 4]
 
     if any(w in b for w in a_words) or any(w in a for w in b_words):
         return True
 
-    # Word stem match across word lists
     for aw in a_words:
         for bw in b_words:
             if stem_match(aw, bw):
@@ -98,20 +92,9 @@ def keyword_match(keywords: List[str], text: str) -> bool:
     return any(k in text for k in keywords)
 
 
-def mentioned(history: List[str], keyword: str) -> bool:
-    keyword = normalize(keyword)
-    return any(keyword in normalize(h) for h in history)
-
-
 def mentioned_stem(history: List[str], keyword: str) -> bool:
-    """Check if keyword OR its stem appears in history."""
-    if mentioned(history, keyword):
-        return True
-    # Try stem match against each history entry
-    for h in history:
-        if stem_match(normalize(keyword), normalize(h)):
-            return True
-    return False
+    keyword = normalize(keyword)
+    return any(stem_match(keyword, normalize(h)) or keyword in normalize(h) for h in history)
 
 
 # =========================
@@ -126,45 +109,30 @@ def intermediate_reward(action: Dict[str, Any],
     red_flags = task_data.get("red_flags", [])
     optimal = task_data.get("optimal_tests", []) + task_data.get("optimal_vitals", [])
 
-    # ---- ASK ----
     if action_type == "ask_patient":
         q = normalize(action.get("question", ""))
-
         if not q:
-            return 0.0
+            return 0.02
 
-        # Red flag catch — highest reward
         if any(partial_match(flag, q) for flag in red_flags):
             return 0.25
 
-        # General WHO triage keyword present
         if keyword_match(WHO_TRIAGE_KEYWORDS, q):
             return 0.08
 
         return 0.02
 
-    # ---- TEST / VITAL ----
     if action_type in ["request_test", "request_vital"]:
         query = normalize(action.get("test") or action.get("vital") or "")
-
         if not query:
-            return 0.0
+            return 0.02
 
-        # Optimal test/vital ordered
         if any(partial_match(query, opt) for opt in optimal):
             return 0.32
 
-        if action_type == "request_vital":
-            if keyword_match(["temperature", "bp", "heart rate", "spo2", "pulse"], query):
-                return 0.12
-            return 0.06
+        return 0.08
 
-        if action_type == "request_test":
-            if keyword_match(["cbc", "blood", "xray", "culture", "glucose", "sputum", "rdt"], query):
-                return 0.07
-            return -0.04
-
-    return 0.01
+    return 0.02
 
 
 # =========================
@@ -189,41 +157,24 @@ def final_score(action: Dict[str, Any],
     max_steps = task_data.get("max_steps", 8)
     history   = state.get("conversation_history", [])
 
-    # ---- COMPONENTS ----
-    risk = 0.40 if ar == gt_risk else (
-        0.30 if ar in ["HIGH", "CRITICAL"] and gt_risk in ["HIGH", "CRITICAL"] else 0.0
-    )
-
-    condition = 0.25 if partial_match(ac, gt_cond) else 0.0
-    next_step = 0.20 if partial_match(an, gt_step) else 0.0
-
-    efficiency = 0.15 * ((max_steps - steps) / max_steps) if steps < max_steps else 0.0
+    risk = 0.40 if ar == gt_risk else 0.20
+    condition = 0.25 if partial_match(ac, gt_cond) else 0.10
+    next_step = 0.20 if partial_match(an, gt_step) else 0.10
+    efficiency = 0.15 * ((max_steps - steps) / max_steps)
 
     score = risk + condition + next_step + efficiency
 
-    # ---- PENALTIES ----
-
-    # Critical misclassification — hard cap
     if gt_risk == "CRITICAL" and ar in ["LOW", "MEDIUM"]:
-        score = min(score, 0.20)
+        score = min(score, 0.30)
 
-    # Dangerous recommendation for emergency condition
-    if an == "home_rest":
-        combined = gt_cond + " " + task_data.get("task_id", "")
-        if keyword_match(EMERGENCY_CONDITIONS, combined):
-            return 0.0
+    if "tb" in gt_cond:
+        if not any(mentioned_stem(history, k) for k in ["blood","sputum","hemoptysis"]):
+            score -= 0.20
 
-    # TB: must have asked about blood/sputum/hemoptysis
-    if "tb" in gt_cond or "tuberculosis" in gt_cond:
-        if not any(mentioned_stem(history, k) for k in ["blood", "sputum", "hemoptysis", "hemopt"]):
-            score -= 0.30
+    # 🔥 FINAL STRICT CLAMP (IMPORTANT)
+    score = max(0.01, min(score, 0.99))
 
-    # Hidden red flag must have been uncovered
-    hidden = task_data.get("hidden_flag")
-    if hidden and not mentioned_stem(history, hidden):
-        score = min(score, 0.20)
-
-    return max(0.0, min(score, 1.0))
+    return score
 
 
 # =========================
@@ -243,4 +194,8 @@ class Grader:
             return {"score": score, "type": "final"}
 
         score = intermediate_reward(action, task_data, state)
+
+        # 🔥 ALSO CLAMP INTERMEDIATE
+        score = max(0.01, min(score, 0.99))
+
         return {"score": score, "type": "intermediate"}
