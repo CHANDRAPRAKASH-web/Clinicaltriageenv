@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# --- Hackathon-mandated variable names — NO fallback defaults ---
+# --- Hackathon-mandated variable names ---
 API_BASE_URL = os.getenv("API_BASE_URL")
 MODEL_NAME   = os.getenv("MODEL_NAME")
 API_KEY      = os.getenv("API_KEY") or os.getenv("HF_TOKEN")
@@ -22,7 +22,7 @@ print(f"🤖 Model: {MODEL_NAME}", flush=True)
 
 
 # -----------------------------------------------
-# STDOUT LOG HELPERS (mandatory exact format)
+# STDOUT LOG HELPERS
 # -----------------------------------------------
 def log_start(task: str, env: str, model: str) -> None:
     print(f"[START] task={task} env={env} model={model}", flush=True)
@@ -31,22 +31,16 @@ def log_start(task: str, env: str, model: str) -> None:
 def log_step(step: int, action: str, reward: float, done: bool, error: Optional[str]) -> None:
     error_val = error if error else "null"
     done_val  = str(done).lower()
-    print(
-        f"[STEP] step={step} action={action} reward={reward:.2f} done={done_val} error={error_val}",
-        flush=True,
-    )
+    print(f"[STEP] step={step} action={action} reward={reward:.2f} done={done_val} error={error_val}", flush=True)
 
 
 def log_end(success: bool, steps: int, score: float, rewards: List[float]) -> None:
     rewards_str = ",".join(f"{r:.2f}" for r in rewards)
-    print(
-        f"[END] success={str(success).lower()} steps={steps} score={score:.3f} rewards={rewards_str}",
-        flush=True,
-    )
+    print(f"[END] success={str(success).lower()} steps={steps} score={score:.3f} rewards={rewards_str}", flush=True)
 
 
 # -----------------------------------------------
-# LLM CALL — client passed in, never created at module level
+# LLM CALL
 # -----------------------------------------------
 def call_llm(client, observation: dict) -> dict:
     system_prompt = """You are a rural health assistant AI helping a community health worker diagnose patients.
@@ -86,15 +80,13 @@ Follow the progression: questions first → vitals → tests → final assessmen
             temperature=0.1,
             max_tokens=200
         )
-
         raw = response.choices[0].message.content.strip()
         raw = raw.replace("```json", "").replace("```", "").strip()
         return json.loads(raw)
 
     except Exception as e:
         print(f"[DEBUG] LLM call failed: {e}", flush=True)
-        return {"action": "ask_patient",
-                "question": "Can you describe your main symptoms clearly?"}
+        return {"action": "ask_patient", "question": "Can you describe your main symptoms clearly?"}
 
 
 # -----------------------------------------------
@@ -157,15 +149,33 @@ def run_task(client, task_name: str) -> None:
 
 
 # -----------------------------------------------
-# MAIN — client created ONCE here using injected vars
+# MAIN
 # -----------------------------------------------
 def main() -> None:
     from openai import OpenAI
 
-    # Single client init — uses their injected API_BASE_URL and API_KEY
+    # Resolve base_url — must never be None or empty string
+    base_url = API_BASE_URL
+    if not base_url:
+        base_url = "https://api-inference.huggingface.co/v1"
+
+    api_key = API_KEY
+    if not api_key:
+        api_key = "dummy-key"  # OpenAI client requires non-empty string
+
+    model = MODEL_NAME
+    if not model:
+        model = "Qwen/Qwen2.5-72B-Instruct"
+
+    # Patch module-level MODEL_NAME so call_llm uses it
+    global MODEL_NAME
+    MODEL_NAME = model
+
+    print(f"🔗 Using base_url: {base_url}", flush=True)
+
     client = OpenAI(
-        base_url=API_BASE_URL,
-        api_key=API_KEY
+        base_url=base_url,
+        api_key=api_key
     )
 
     for task_name in ["easy_malaria", "medium_tb", "hard_sepsis"]:
